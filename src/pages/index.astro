@@ -1,46 +1,84 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import SettingsDrawer from '../components/SettingsDrawer.svelte';
-import Live2DCanvas from '../components/Live2DCanvas.svelte';
-import ChatFooter from '../components/ChatFooter.svelte';
+import NewConnectionForm from '../components/NewConnectionForm.astro'
+import Welcome from '../components/Welcome.astro';
+import '../styles/global.css';
+import MainPage from '../components/main-page.svelte';
 ---
 
 <Layout title="WebSocket Client">
-  <div id="root" class="min-h-screen bg-slate-900 text-slate-100 flex">
-    <!-- Fondo -->
-    <main class="relative flex-1 flex flex-col overflow-hidden">
-      <!-- Imagen de fondo (absolute detrás de todo) -->
-      <img
-        class="absolute inset-0 w-full h-full object-cover z-0"
-        src="/bg/ceiling-window-room-night.jpeg"
-        alt="background"
-      />
-
-      <!-- Capa oscura opcional para mejorar contraste -->
-      <div class="absolute inset-0 bg-black/40 z-[1]"></div>
-
-      <!-- Contenido encima del fondo -->
-      <div class="relative z-10 flex-1 flex flex-col items-center justify-center">
-        <Live2DCanvas client:only="svelte" />
-
-        <!-- Estado de conexión -->
-        <div class="mt-4 px-3 py-1 rounded-full bg-green-600 text-sm font-medium">
-          Connected
-        </div>
-
-        <!-- Mensaje de inicio -->
-        <div class="mt-2">
-          <p class="text-slate-300 text-lg">
-            New Conversation Started
-          </p>
-        </div>
-      </div>
-
-      <!-- Footer chat -->
-      <ChatFooter client:only="svelte" />
-    </main>
-
-    <!-- Drawer de configuración -->
-    <SettingsDrawer client:only="svelte" />
-  </div>
+	<div class="space-y-8">
+    <MainPage client:load>
+      <NewConnectionForm></NewConnectionForm>
+    </MainPage>
+	</div>
 </Layout>
+
+<script>
+// main.ts
+
+import { WsConnectionManager } from '../lib/WsConnectionManager';
+import type { ConnectionState, Message } from '../lib/types';
+
+// 1. new Class
+const wsManager = new WsConnectionManager();
+
+// 2.Listeners
+wsManager.on('connectionStatusChange', (state: ConnectionState) => {
+  console.log(`[MANAGER] Estado de '${state.id}' cambió a: ${state.status}`);
+});
+
+wsManager.on('message', (data: { connectionId: string; message: Message }) => {
+  console.log(`[MANAGER] Mensaje recibido en '${data.connectionId}':`, data.message.data);
+});
+
+wsManager.on('connectionCreated', (state: ConnectionState) => {
+    console.log(`[MANAGER] Conexión '${state.name}' (${state.id}) ha sido creada.`);
+});
+
+
+// 3. Crear múltiples conexiones
+// Usaremos un servicio de echo público para las pruebas.
+const wsExampel = "ws://127.0.0.1:12393/client-ws"
+// Conexión 1: Echo Básico
+const callbackExample = (...args:any) => {
+  console.log('CALLBACK:', ...args);
+}
+wsManager.createConnection({
+  id: 'ws_api',
+  name: 'Echo Server Básico',
+  url: wsExampel, // Un servidor de echo público y confiable
+  onOpen: callbackExample,
+  onMessage: callbackExample,
+  onClose: callbackExample,
+});
+//wsManager.connect('ws_api');
+//const ws_api = wsManager.getConnection('ws_api')
+//  console.log("ws_api",ws_api)
+
+const template = (text: string, type: string = 'text-input'): {
+  type: string;
+  text: string;
+  images: string[];
+} => {
+  return {
+    type,
+    text,
+    images: []
+  }
+}
+/*
+{"type": 'text-input',"text": 'de que tamaño crees que es el universo?',"images": []}
+{"type":"add-client-to-group","invitee_uid":"571495c2-8dcb-4a74-8979-d6ad51dece1a"}
+*/
+
+/*
+const sendMessage = wsManager.send('ws_api', template('de que tamaño crees que es el universo?'));
+console.log("sendMessage",sendMessage)
+*/
+
+/* 
+wsManager.connect('echo-2'); 
+{"type":"text-input","text":"COMO ESTAS","images":[]}
+*/
+</script>
