@@ -8,7 +8,6 @@ import MainPage from '../components/main-page.svelte';
 
 <Layout title="WebSocket Client">
 	<div class="space-y-8">
-		<h1 class="text-4xl font-bold text-center text-white">Gestor de Conexiones WebSocket</h1>
     <MainPage client:load>
       <NewConnectionForm></NewConnectionForm>
     </MainPage>
@@ -21,11 +20,10 @@ import MainPage from '../components/main-page.svelte';
 import { WsConnectionManager } from '../lib/WsConnectionManager';
 import type { ConnectionState, Message } from '../lib/types';
 
-// 1. Crear una instancia del gestor de conexiones
+// 1. new Class
 const wsManager = new WsConnectionManager();
 
-// 2. (Opcional) Escuchar eventos globales desde el manager
-// Esto es genial para logging o para actualizar una UI centralizada.
+// 2.Listeners
 wsManager.on('connectionStatusChange', (state: ConnectionState) => {
   console.log(`[MANAGER] Estado de '${state.id}' cambió a: ${state.status}`);
 });
@@ -43,58 +41,44 @@ wsManager.on('connectionCreated', (state: ConnectionState) => {
 // Usaremos un servicio de echo público para las pruebas.
 const wsExampel = "ws://127.0.0.1:12393/client-ws"
 // Conexión 1: Echo Básico
+const callbackExample = (...args:any) => {
+  console.log('CALLBACK:', ...args);
+}
 wsManager.createConnection({
   id: 'ws_api',
   name: 'Echo Server Básico',
   url: wsExampel, // Un servidor de echo público y confiable
+  onOpen: callbackExample,
+  onMessage: callbackExample,
+  onClose: callbackExample,
 });
-
-// Conexión 2: Otro Echo con callbacks personalizados
-wsManager.createConnection({
-  id: 'echo-2',
-  name: 'Echo Server Avanzado',
-  url: 'wss://socketsbay.com/wss/v2/1/demo/', // Otro servidor de echo
-  // Callbacks específicos para esta conexión
-  onOpen: (client) => {
-    console.log(`CALLBACK onOpen: ¡Conexión '${client.name}' abierta! Enviando saludo.`);
-    client.send({ action: 'greeting', from: client.name });
-  },
-  onMessage: (message, client) => {
-    console.log(`CALLBACK onMessage: '${client.name}' recibió un eco:`, message.data);
-  },
-  onClose: (client) => {
-      console.log(`CALLBACK onClose: Conexión '${client.name}' cerrada.`);
-  }
-});
-
-
-// 4. Interactuar con las conexiones a través del manager
-
-// Conectar una por una
-//console.log('\n--- Conectando una por una ---');
 //wsManager.connect('ws_api');
-const ws_api = wsManager.getConnection('ws_api')
-if (ws_api){
+//const ws_api = wsManager.getConnection('ws_api')
 //  console.log("ws_api",ws_api)
-}
-const template = (text:string):templateExample =>{
-	return {
-		type: 'text-input',
-		text: text,
-		images: []
-	}
+
+const template = (text: string, type: string = 'text-input'): {
+  type: string;
+  text: string;
+  images: string[];
+} => {
+  return {
+    type,
+    text,
+    images: []
+  }
 }
 /*
-const sendMessage = wsManager.send('ws_api', template('que tan lejos podrias llegar si caminaras dia y noche en uan direccion, en que momento te rendirias'));
+{"type": 'text-input',"text": 'de que tamaño crees que es el universo?',"images": []}
+{"type":"add-client-to-group","invitee_uid":"571495c2-8dcb-4a74-8979-d6ad51dece1a"}
+*/
+
+/*
+const sendMessage = wsManager.send('ws_api', template('de que tamaño crees que es el universo?'));
 console.log("sendMessage",sendMessage)
 */
-interface templateExample {
-	type: string,
-	text: string,
-	images: string[]
-}
 
 /* 
 wsManager.connect('echo-2'); 
 {"type":"text-input","text":"COMO ESTAS","images":[]}
 */
+</script>

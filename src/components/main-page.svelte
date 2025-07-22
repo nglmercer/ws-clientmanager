@@ -2,30 +2,44 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { WsConnectionManager } from '../lib/WsConnectionManager';
-	import type { ConnectionState, Message,ConnectionOptions } from '../lib/types';
+	import type { ConnectionState, Message, ConnectionOptions } from '../lib/types';
 	import ConnectionCard from './ConnectionCard.svelte';
 	import ConnectionDetail from './ConnectionDetail.svelte';
 	import { emitter } from '../lib/Emitter';
 
 	// --- Estado Reactivo ---
-	let manager: WsConnectionManager;
+
+	// [CAMBIO 1]: Inicializar manager como null para un tipado estricto.
+	// TypeScript sabe que podría no estar disponible fuera del ciclo de vida de onMount.
+	let manager: WsConnectionManager | null = null;
+	
 	let connections: ConnectionState[] = [];
 	let messages = new Map<string, Message[]>();
 	let selectedConnectionId: string | null = null;
 	
-	// Derivados del estado
+	// Derivados del estado (sin cambios, ya estaban bien)
 	$: selectedConnection = connections.find(c => c.id === selectedConnectionId) || null;
 	$: selectedConnectionMessages = (selectedConnectionId && messages.get(selectedConnectionId)) || [];
 
 	const eventName = 'ws:create';
+
+	// [CAMBIO 2]: Define el manejador del emitter fuera de onMount para poder
+	// removerlo correctamente en la fase de limpieza.
+	const handleEmitterCreate = (data: ConnectionOptions) => {
+		// El chequeo de null es una buena práctica ahora que el tipo lo permite.
+		if (manager) {
+			handleCreate(data);
+		}
+	};
+
 	onMount(() => {
 		manager = new WsConnectionManager();
 
 		// --- Suscribirse a eventos del Manager ---
+		// Los tipos aquí ya estaban bien, ¡excelente!
 		manager.on('connectionCreated', (state: ConnectionState) => {
 			connections = [...connections, state];
 			messages.set(state.id, []);
-			// Seleccionar la conexión recién creada
 			selectedConnectionId = state.id;
 		});
 
@@ -45,56 +59,65 @@
 			const { connectionId, message } = payload;
 			const currentMessages = messages.get(connectionId) || [];
 			messages.set(connectionId, [...currentMessages, message]);
-			messages = messages; // Forzar reactividad
+			messages = messages;
 		});
-		emitter.on(eventName,(data)=>{
-			handleCreate(data)
-		})
+		
+		// [CAMBIO 3]: Usa el manejador predefinido y tipa su argumento.
+		// Aunque ya lo tipamos en la definición de la función, esto muestra dónde iría el tipo.
+		emitter.on(eventName, handleEmitterCreate);
+
 		return () => {
 			// Limpieza al desmontar el componente
-			manager.disconnectAll();
-			emitter.off(eventName,()=>{})
+			manager?.disconnectAll(); // El operador 'optional chaining' es útil aquí.
+			
+			// [CAMBIO 4]: Pasa la referencia de función correcta a .off()
+			emitter.off(eventName, handleEmitterCreate);
 		}
 	});
-	console.log("emitter listener",)
 
 	// --- Handlers de Eventos de Componentes Hijos ---
-	function handleCreate(options:ConnectionOptions) {
+	function handleCreate(options: ConnectionOptions) {
 		try {
-			console.log("handleCreate",options)
-			manager.createConnection(options);
+			// El chequeo de null asegura que no se llame si el manager no está listo.
+			manager?.createConnection(options);
 		} catch (e) {
-			console.log("err",e);
+			console.error("Error al crear la conexión:", e);
 		}
 	}
 
-function handleConnect({ detail: id }) {
-		manager.connect(id);
+	// [CAMBIO 5]: Tipar explícitamente los eventos de los componentes hijos.
+	// El payload (el ID) viene en `event.detail`.
+	
+	function handleConnect(event: CustomEvent<string>) {
+		const id = event.detail;
+		manager?.connect(id);
 	}
 
-	function handleDisconnect({ detail: id }) {
-		manager.disconnect(id);
+	function handleDisconnect(event: CustomEvent<string>) {
+		const id = event.detail;
+		manager?.disconnect(id);
 	}
 
-	function handleRemove({ detail: id }) {
-		manager.removeConnection(id);
+	function handleRemove(event: CustomEvent<string>) {
+		const id = event.detail;
+		manager?.removeConnection(id);
 	}
 
-	function handleSelect({ detail: id }) {
-		selectedConnectionId = id;
+	function handleSelect(event: CustomEvent<string>) {
+		selectedConnectionId = event.detail;
 	}
 	
-	function handleSend({ detail: data }) {
+	function handleSend(event: CustomEvent<string | object>) {
+		const data = event.detail;
 		if (selectedConnectionId) {
-			manager.send(selectedConnectionId, data);
+			manager?.send(selectedConnectionId, data);
 		}
 	}
 
 </script>
 
-<main>
-	<h1>Svelte WebSocket Manager</h1>
-	
+<!-- El resto de tu componente (HTML y CSS) permanece igual -->
+<main>	
 	<div class="slot">
 		<slot></slot>
 	</div>
@@ -135,11 +158,6 @@ function handleConnect({ detail: id }) {
 </main>
 
 <style>
-	:global(body) {
-		background-color: #1e1e1e;
-		color: #f1f1f1;
-		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-	}
 	main {
 		max-width: 1400px;
 		margin: 0 auto;

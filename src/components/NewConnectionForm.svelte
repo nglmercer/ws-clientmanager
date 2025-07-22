@@ -11,7 +11,7 @@
 	function handleSubmit() {
 		// No necesitas preventDefault aquí, el modificador lo maneja
 		if (!id || !url) {
-			alert('El ID y la URL son obligatorios.');
+			console.error('El ID y la URL son obligatorios.');
 			return;
 		}
 		

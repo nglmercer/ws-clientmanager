@@ -60,7 +60,7 @@
 					handleSend();
 				}
 			}}
-		/>
+		></textarea>
 		<button type="submit" disabled={!isConnected || !messageToSend.trim()}>Enviar</button>
 	</form>
 </div>
@@ -84,6 +84,7 @@
 		flex-grow: 1;
 		padding: 1rem;
 		overflow-y: auto;
+        max-height: 100dvh;
 	}
 	.empty-log {
 		color: #888;
