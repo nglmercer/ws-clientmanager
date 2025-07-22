@@ -1,6 +1,6 @@
 // WsConnectionManager.ts
 
-import { Emitter } from './EventEmitter';
+import { Emitter } from './Emitter';
 import { WsClient } from './WsClient';
 import type { ConnectionOptions, ConnectionState, Message } from './types';
 

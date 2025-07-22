@@ -1,15 +1,17 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import ConnectionCard from '../components/ConnectionCard.astro';
+import NewConnectionForm from '../components/NewConnectionForm.astro'
 import Welcome from '../components/Welcome.astro';
 import '../styles/global.css';
-
+import MainPage from '../components/main-page.svelte';
 ---
 
 <Layout title="WebSocket Client">
 	<div class="space-y-8">
 		<h1 class="text-4xl font-bold text-center text-white">Gestor de Conexiones WebSocket</h1>
-
+    <MainPage client:load>
+      <NewConnectionForm></NewConnectionForm>
+    </MainPage>
 	</div>
 </Layout>
 
@@ -39,10 +41,10 @@ wsManager.on('connectionCreated', (state: ConnectionState) => {
 
 // 3. Crear múltiples conexiones
 // Usaremos un servicio de echo público para las pruebas.
-const wsExampel = "ws://127.0.0.1:12393"
+const wsExampel = "ws://127.0.0.1:12393/client-ws"
 // Conexión 1: Echo Básico
 wsManager.createConnection({
-  id: 'echo-1',
+  id: 'ws_api',
   name: 'Echo Server Básico',
   url: wsExampel, // Un servidor de echo público y confiable
 });
@@ -69,8 +71,12 @@ wsManager.createConnection({
 // 4. Interactuar con las conexiones a través del manager
 
 // Conectar una por una
-console.log('\n--- Conectando una por una ---');
-wsManager.connect('echo-1');
+//console.log('\n--- Conectando una por una ---');
+//wsManager.connect('ws_api');
+const ws_api = wsManager.getConnection('ws_api')
+if (ws_api){
+//  console.log("ws_api",ws_api)
+}
 const template = (text:string):templateExample =>{
 	return {
 		type: 'text-input',
@@ -78,8 +84,10 @@ const template = (text:string):templateExample =>{
 		images: []
 	}
 }
-const sendMessage = wsManager.send('echo-1', template('que tan lejos podrias llegar si caminaras dia y noche en uan direccion, en que momento te rendirias'));
+/*
+const sendMessage = wsManager.send('ws_api', template('que tan lejos podrias llegar si caminaras dia y noche en uan direccion, en que momento te rendirias'));
 console.log("sendMessage",sendMessage)
+*/
 interface templateExample {
 	type: string,
 	text: string,
