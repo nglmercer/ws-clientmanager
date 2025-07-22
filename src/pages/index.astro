@@ -1,11 +1,92 @@
 ---
-import Welcome from '../components/Welcome.astro';
 import Layout from '../layouts/Layout.astro';
+import ConnectionCard from '../components/ConnectionCard.astro';
+import Welcome from '../components/Welcome.astro';
+import '../styles/global.css';
 
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
 ---
 
-<Layout>
-	<Welcome />
+<Layout title="WebSocket Client">
+	<div class="space-y-8">
+		<h1 class="text-4xl font-bold text-center text-white">Gestor de Conexiones WebSocket</h1>
+
+	</div>
 </Layout>
+
+<script>
+// main.ts
+
+import { WsConnectionManager } from '../lib/WsConnectionManager';
+import type { ConnectionState, Message } from '../lib/types';
+
+// 1. Crear una instancia del gestor de conexiones
+const wsManager = new WsConnectionManager();
+
+// 2. (Opcional) Escuchar eventos globales desde el manager
+// Esto es genial para logging o para actualizar una UI centralizada.
+wsManager.on('connectionStatusChange', (state: ConnectionState) => {
+  console.log(`[MANAGER] Estado de '${state.id}' cambió a: ${state.status}`);
+});
+
+wsManager.on('message', (data: { connectionId: string; message: Message }) => {
+  console.log(`[MANAGER] Mensaje recibido en '${data.connectionId}':`, data.message.data);
+});
+
+wsManager.on('connectionCreated', (state: ConnectionState) => {
+    console.log(`[MANAGER] Conexión '${state.name}' (${state.id}) ha sido creada.`);
+});
+
+
+// 3. Crear múltiples conexiones
+// Usaremos un servicio de echo público para las pruebas.
+const wsExampel = "ws://127.0.0.1:12393"
+// Conexión 1: Echo Básico
+wsManager.createConnection({
+  id: 'echo-1',
+  name: 'Echo Server Básico',
+  url: wsExampel, // Un servidor de echo público y confiable
+});
+
+// Conexión 2: Otro Echo con callbacks personalizados
+wsManager.createConnection({
+  id: 'echo-2',
+  name: 'Echo Server Avanzado',
+  url: 'wss://socketsbay.com/wss/v2/1/demo/', // Otro servidor de echo
+  // Callbacks específicos para esta conexión
+  onOpen: (client) => {
+    console.log(`CALLBACK onOpen: ¡Conexión '${client.name}' abierta! Enviando saludo.`);
+    client.send({ action: 'greeting', from: client.name });
+  },
+  onMessage: (message, client) => {
+    console.log(`CALLBACK onMessage: '${client.name}' recibió un eco:`, message.data);
+  },
+  onClose: (client) => {
+      console.log(`CALLBACK onClose: Conexión '${client.name}' cerrada.`);
+  }
+});
+
+
+// 4. Interactuar con las conexiones a través del manager
+
+// Conectar una por una
+console.log('\n--- Conectando una por una ---');
+wsManager.connect('echo-1');
+const template = (text:string):templateExample =>{
+	return {
+		type: 'text-input',
+		text: text,
+		images: []
+	}
+}
+const sendMessage = wsManager.send('echo-1', template('que tan lejos podrias llegar si caminaras dia y noche en uan direccion, en que momento te rendirias'));
+console.log("sendMessage",sendMessage)
+interface templateExample {
+	type: string,
+	text: string,
+	images: string[]
+}
+
+/* 
+wsManager.connect('echo-2'); 
+{"type":"text-input","text":"COMO ESTAS","images":[]}
+*/
